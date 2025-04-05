@@ -1,0 +1,40 @@
+import tkinter as tk
+
+root = tk.Tk()
+screenWidth = root.winfo_screenmmwidth()
+screenHeight = root.winfo_screenmmheight()
+root.geometry(f"{screenWidth}x{screenHeight}")
+root.resizable(0, 0)
+
+LABEL_HEIGHT = int(screenHeight/3)
+LABEL_WIDTH = int(screenWidth/3)
+
+color_red_txt = tk.Label(root, text='red', borderwidth=2, width=10)
+color_orange_txt = tk.Label(root, text='orange', borderwidth=2, width=10)
+color_yellow_txt = tk.Label(root, text='yellow', borderwidth=2, width=10)
+color_green_txt = tk.Label(root, text='green', borderwidth=2, width=10)
+color_blue_txt = tk.Label(root, text='blue', borderwidth=2, width=10)
+color_purple_txt = tk.Label(root, text='purple', borderwidth=2, width=10)
+
+color_red = tk.Label(root, background='red', width=10)
+color_orange = tk.Label(root, background='orange', width=10)
+color_yellow = tk.Label(root, background='yellow', width=10)
+color_green = tk.Label(root, background='green', width=10)
+color_blue = tk.Label(root, background='blue', width=10)
+color_purple = tk.Label(root, background='purple', width=10)
+
+color_red_txt.grid(column=0, row=0)
+color_red.grid(column=1, row=0)
+color_orange_txt.grid(column=0, row=1)
+color_orange.grid(column=1, row=1)
+color_yellow_txt.grid(column=0, row=2)
+color_yellow.grid(column=1, row=2)
+color_green_txt.grid(column=0, row=3)
+color_green.grid(column=1, row=3)
+color_blue_txt.grid(column=0, row=4)
+color_blue.grid(column=1, row=4)
+color_purple_txt.grid(column=0, row=5)
+color_purple.grid(column=1, row=5)
+#color_red_txt = tk.Label(root, text='red')
+
+root.mainloop()
