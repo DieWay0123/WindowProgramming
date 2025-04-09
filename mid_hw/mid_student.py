@@ -1,10 +1,12 @@
 from dataclasses import asdict, dataclass
+from email import message
 import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
 from typing import Dict, List
 import os
 import json
 import csv
+from xmlrpc.client import Boolean
 
 @dataclass
 class Student:
@@ -23,7 +25,7 @@ class ScoreManager:
         self.isDescending = tk.BooleanVar()
         self.scoreList_showMethod_variable = tk.StringVar(self.root, "name_sorted")
 
-        self.load_data()
+        self.load_data(filepath=self.data_file)
         self.build_gui()
         self.update_score_listBox()
 
@@ -32,10 +34,10 @@ class ScoreManager:
         with open(self.data_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-    def load_data(self):
-        if os.path.exists(self.data_file):
+    def load_data(self, filepath):
+        if os.path.exists(filepath):
             try:
-                with open(self.data_file, "r", encoding="utf-8") as f:
+                with open(filepath, "r", encoding="utf-8") as f:
                     raw = json.load(f)
                     self.students = {name: [Student(**r) for r in records] for name, records in raw.items()}
             except Exception as e:
@@ -48,7 +50,7 @@ class ScoreManager:
     def build_gui(self):
         menubar = tk.Menu(self.root)
         filemenu = tk.Menu(menubar, tearoff=0)
-        filemenu.add_command(label="匯入csv", command=self.import_csv)
+        filemenu.add_command(label="匯入檔案", command=self.import_csv)
         filemenu.add_command(label="匯出csv", command=self.export_csv)
         menubar.add_cascade(label="檔案", menu=filemenu)
         self.root.config(menu=menubar)
@@ -86,7 +88,8 @@ class ScoreManager:
         tk.Button(self.top_frame, text="查詢", command=self.search_student).grid(row=0, column=4, padx=5, pady=5)
         tk.Button(self.top_frame, text="刪除", command=self.delete_student).grid(row=1, column=3, padx=5, pady=5)
         tk.Button(self.top_frame, text="更新", command=self.update_student).grid(row=1, column=4, padx=5, pady=5)
-        
+        tk.Button(self.top_frame, text="移除已刪除紀錄", command=self.clear_deleted_records).grid(row=0, column=5, padx=5, pady=5)
+        tk.Button(self.top_frame, text="刪除所有資料", command=self.clear_all_records).grid(row=1, column=5, padx=5, pady=5)        
         # scoreList rdButtons
         tk.Radiobutton(self.middle_frame, 
                         variable=self.scoreList_showMethod_variable, 
@@ -129,6 +132,7 @@ class ScoreManager:
         val = self.score_filter.get()
         status = ""
         records = []
+        
         for name, record in self.students.items():
             if self.show_deleted.get():
                 status = " (已刪除)"
@@ -138,7 +142,7 @@ class ScoreManager:
                         # self.score_lb.insert(tk.END, f"{rec.name} - {rec.score} (已刪除)")
             else:
                 latest_record = record[-1]
-                if not latest_record.deleted and latest_record.score >= val:
+                if latest_record.deleted == False and latest_record.score >= val:
                     records.append(latest_record)
                     # self.score_lb.insert(tk.END, f"{name} - {latest_record.score}")
         if self.isDescending.get():
@@ -216,25 +220,32 @@ class ScoreManager:
         return student.score
     
     def import_csv(self):
-        filepath = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
+        filepath = filedialog.askopenfilename(filetypes=[("支援格式", "*.csv *.json")])
         if not filepath:
             return
         try:
-            with open(filepath, mode="r", encoding="utf-8-sig") as file:
-                reader = csv.DictReader(file)
-                for row in reader:
-                    name = row["姓名"].strip()
-                    score = int(row["成績"].strip())
-                    deleted = row["已刪除"].strip().lower() in ["true", "1", "yes"]
-                    if name not in self.students:
-                        self.students[name] = []
-                    self.students[name].append(Student(name, score, deleted))
+            if filepath.endswith(".csv"):
+                import_students = {}
+                with open(filepath, mode='r', encoding="utf-8-sig") as file:
+                    reader = csv.DictReader(file)
+                    for row in reader:
+                        name = row['姓名'].strip()
+                        score = int(row["成績"].strip())
+                        deleted = row["已刪除"].strip().lower() in ["true", "1", "yes"]
+                        if name not in import_students:
+                            import_students[name] = []
+                        import_students[name].append(Student(name, score, deleted))
+                self.students = import_students            
+            elif filepath.endswith(".json"):
+                self.load_data(filepath)
+            else:
+                raise ValueError("不支援的檔案格式")
             self.save_data()
             self.update_score_listBox()
             messagebox.showinfo("匯入成功", f"已成功匯入 {filepath}")
         except Exception as e:
             messagebox.showerror("匯入失敗", f"發生錯誤：{e}")
-    
+            
     def export_csv(self):
         filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
         if not filepath:
@@ -247,6 +258,20 @@ class ScoreManager:
                     writer.writerow([r.name, r.score, r.deleted])
             file.close()
         messagebox.showinfo("匯出成功", f"已匯出到 {filepath}")
+        
+    def clear_deleted_records(self):
+        for name in list(self.students.keys()):
+            self.students[name] = [rec for rec in self.students[name] if not rec.deleted]
+            if not self.students[name]:
+                del self.students[name]
+        self.save_data()
+        self.update_score_listBox()
+        
+    def clear_all_records(self):
+        self.students = {}
+        self.save_data()
+        self.update_score_listBox()
+    
 if __name__ == '__main__':
     root = tk.Tk()
     app = ScoreManager(root)
