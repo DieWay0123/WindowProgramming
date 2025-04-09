@@ -1,9 +1,10 @@
 from dataclasses import asdict, dataclass
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, ttk, filedialog
 from typing import Dict, List
 import os
 import json
+import csv
 
 @dataclass
 class Student:
@@ -19,6 +20,7 @@ class ScoreManager:
         
         self.students: Dict[str, List[Student]] = {}
         self.show_deleted = tk.BooleanVar()
+        self.isDescending = tk.BooleanVar()
         self.scoreList_showMethod_variable = tk.StringVar(self.root, "name_sorted")
 
         self.load_data()
@@ -44,57 +46,81 @@ class ScoreManager:
     # GUI Build
     # --------------------------------------    
     def build_gui(self):
+        menubar = tk.Menu(self.root)
+        filemenu = tk.Menu(menubar, tearoff=0)
+        filemenu.add_command(label="匯入csv", command=self.import_csv)
+        filemenu.add_command(label="匯出csv", command=self.export_csv)
+        menubar.add_cascade(label="檔案", menu=filemenu)
+        self.root.config(menu=menubar)
+
+        # frame layout
+        # top - 輸入與操作按鈕
+        # middle - 排序選項&分數listbox
+        # bottom - 分數篩選
+        self.top_frame = tk.Frame(self.root)
+        self.top_frame.pack(fill="x", padx=10, pady=5, expand=True)
+        
+        self.middle_frame = tk.Frame(self.root)
+        self.middle_frame.pack(fill="both", padx=10, pady=5, anchor="s", expand=True)
+        self.middle_frame.columnconfigure(0, weight=1)
+        self.middle_frame.columnconfigure(1, weight=1)
+        self.middle_frame.columnconfigure(2, weight=1)
+        self.middle_frame.columnconfigure(3, weight=1)
+        self.middle_frame.rowconfigure(1, weight=1)
+        
+        self.bottom_frame = tk.Frame(self.root)
+        self.bottom_frame.pack(fill="both", padx=10, expand=True)
+        
         # name entry
-        tk.Label(self.root, text="姓名").grid(row=0, column=0)
-        self.name_entry = tk.Entry(self.root)
-        self.name_entry.grid(row=0, column=1)
+        tk.Label(self.top_frame, text="姓名").grid(row=0, column=0)
+        self.name_entry = tk.Entry(self.top_frame)
+        self.name_entry.grid(row=0, column=1, columnspan=2)
 
         # score entry
-        tk.Label(self.root, text="分數").grid(row=1, column=0)
-        self.score_entry = tk.Entry(self.root)
-        self.score_entry.grid(row=1, column=1)
-
+        tk.Label(self.top_frame, text="分數").grid(row=1, column=0)
+        self.score_entry = tk.Entry(self.top_frame)
+        self.score_entry.grid(row=1, column=1, columnspan=2)
+        
         # score CRUD buttons
-        tk.Button(self.root, text="新增", command=self.add_student).grid(row=0, column=2)
-        tk.Button(self.root, text="查詢", command=self.search_student).grid(row=0, column=3)
-        tk.Button(self.root, text="刪除", command=self.delete_student).grid(row=1, column=2)
-        tk.Button(self.root, text="更新", command=self.update_student).grid(row=1, column=3)
+        tk.Button(self.top_frame, text="新增", command=self.add_student).grid(row=0, column=3, padx=5, pady=5)
+        tk.Button(self.top_frame, text="查詢", command=self.search_student).grid(row=0, column=4, padx=5, pady=5)
+        tk.Button(self.top_frame, text="刪除", command=self.delete_student).grid(row=1, column=3, padx=5, pady=5)
+        tk.Button(self.top_frame, text="更新", command=self.update_student).grid(row=1, column=4, padx=5, pady=5)
         
         # scoreList rdButtons
-        tk.Radiobutton(self.root, 
+        tk.Radiobutton(self.middle_frame, 
                         variable=self.scoreList_showMethod_variable, 
                         val="name_sorted", text="依姓名排序", 
-                        command=self.update_score_listBox).grid(row=3, column=0)
-        tk.Radiobutton(self.root, 
+                        command=self.update_score_listBox).grid(row=0, column=0, sticky='w')
+        tk.Radiobutton(self.middle_frame, 
                         variable=self.scoreList_showMethod_variable, 
                         val="score_sorted", text="依分數排序", 
-                        command=self.update_score_listBox).grid(row=3, column=1)
-        tk.Checkbutton(self.root, 
+                        command=self.update_score_listBox).grid(row=0, column=1, sticky='w')
+        tk.Checkbutton(self.middle_frame,
+                        variable=self.isDescending,
+                        text="降序排列",
+                        command=self.update_score_listBox).grid(row=0, column=2, sticky='w')
+        tk.Checkbutton(self.middle_frame, 
                         variable=self.show_deleted, 
                         text="顯示已刪除紀錄", 
-                        command=self.update_score_listBox).grid(row=3, column=2)
+                        command=self.update_score_listBox).grid(row=0, column=3, sticky='w')
 
         # scoreList
-        self.score_lb = tk.Listbox(self.root, width=40, height=10)
-        self.score_lb.grid(row=4, column=0, columnspan=4, padx=10, pady=10)
+        self.score_lb = tk.Listbox(self.middle_frame)
+        self.score_lb.grid(row=1, column=0, columnspan=4, padx=10, pady=10, sticky='nsew')
         
 
         # Listbox_scrollBar
-        scrollbar = ttk.Scrollbar(self.root, orient='vertical', command=self.score_lb.yview)
+        scrollbar = ttk.Scrollbar(self.middle_frame, orient='vertical', command=self.score_lb.yview)
         self.score_lb.configure(yscrollcommand=scrollbar.set)
-        scrollbar.grid(row=4, column=4, sticky="ns")
+        scrollbar.grid(row=1, column=4, sticky="ns")
         
         # score_filter
-        tk.Label(self.root, text="分數篩選").grid(row=5, column=0, columnspan=3, sticky="NSEW")
-        self.score_filter = tk.Scale(self.root, from_=0, to=100, tickinterval=60, orient=tk.HORIZONTAL, command=self.update_score_listBox)
+        tk.Label(self.bottom_frame, text="分數篩選").pack(fill='both')
+        self.score_filter = tk.Scale(self.bottom_frame, from_=0, to=100, tickinterval=60, orient=tk.HORIZONTAL, command=self.update_score_listBox)
         self.score_filter.set(0)
-        self.score_filter.grid(row=6, column=0, columnspan=5, sticky="NSEW")
-    
-        # 
-        for i in range(0, 7):
-            self.root.grid_rowconfigure(i, weight=1)
-        for i in range(0, 3):
-            self.root.grid_columnconfigure(i, weight=1)
+        self.score_filter.pack(fill='both')
+
     # --------------------------------------
     # Function
     # --------------------------------------
@@ -115,8 +141,12 @@ class ScoreManager:
                 if not latest_record.deleted and latest_record.score >= val:
                     records.append(latest_record)
                     # self.score_lb.insert(tk.END, f"{name} - {latest_record.score}")
-        for rec in sorted(records, key=self.select_scoreList_showMethod):
-            self.score_lb.insert(tk.END, f"{rec.name} - {rec.score}{status}")
+        if self.isDescending.get():
+            for rec in sorted(records, key=self.select_scoreList_showMethod, reverse=True):
+                self.score_lb.insert(tk.END, f"{rec.name} - {rec.score}{status}")
+        else:
+            for rec in sorted(records, key=self.select_scoreList_showMethod):
+                self.score_lb.insert(tk.END, f"{rec.name} - {rec.score}{status}")
 
     def add_student(self):
         name = self.name_entry.get().strip()
@@ -183,8 +213,40 @@ class ScoreManager:
     def select_scoreList_showMethod(self, student):
         if self.scoreList_showMethod_variable.get() == "name_sorted":
             return student.name
-        return -student.score
-
+        return student.score
+    
+    def import_csv(self):
+        filepath = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
+        if not filepath:
+            return
+        try:
+            with open(filepath, mode="r", encoding="utf-8-sig") as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    name = row["姓名"].strip()
+                    score = int(row["成績"].strip())
+                    deleted = row["已刪除"].strip().lower() in ["true", "1", "yes"]
+                    if name not in self.students:
+                        self.students[name] = []
+                    self.students[name].append(Student(name, score, deleted))
+            self.save_data()
+            self.update_score_listBox()
+            messagebox.showinfo("匯入成功", f"已成功匯入 {filepath}")
+        except Exception as e:
+            messagebox.showerror("匯入失敗", f"發生錯誤：{e}")
+    
+    def export_csv(self):
+        filepath = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
+        if not filepath:
+            return
+        with open(filepath, mode="w", newline="", encoding="utf-8-sig") as file:
+            writer = csv.writer(file)
+            writer.writerow(["姓名", "成績", "已刪除"])
+            for name, records in self.students.items():
+                for r in records:
+                    writer.writerow([r.name, r.score, r.deleted])
+            file.close()
+        messagebox.showinfo("匯出成功", f"已匯出到 {filepath}")
 if __name__ == '__main__':
     root = tk.Tk()
     app = ScoreManager(root)
