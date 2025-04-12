@@ -12,6 +12,8 @@ import statistics
 import difflib
 import re
 
+from matplotlib.figure import Figure
+
 @dataclass
 class Student:
     name: str
@@ -66,31 +68,45 @@ class ScoreManager:
         menubar.add_cascade(label="檔案", menu=filemenu)
         menubar.add_cascade(label="主題", menu=thememenu)
         self.root.config(menu=menubar)
+        
+        # notebook分頁管理
+        # manage_tab: 分數管理頁面
+        # chart_tab: 統計圖表頁面
+        self.main_notebook = ttk.Notebook(self.root)
+        self.main_notebook.pack(fill="both", expand=True)
+        self.manage_tab = tk.Frame(self.main_notebook)
+        self.chart_tab = tk.Frame(self.main_notebook)
+        self.main_notebook.add(self.manage_tab, text="成績管理")
+        self.main_notebook.add(self.chart_tab, text="圖表分析")
 
+        
+        # ---------------------------------------------
+        # 成績管理頁面
         # frame layout
         # top - 輸入與操作按鈕
         # middle - 排序選項&分數listbox
         # bottom - 分數篩選
         # stats - 成績資訊(平均, Q1/2/3, 及格人數...)
-        self.top_frame = tk.Frame(self.root)
+        # ---------------------------------------------
+        self.top_frame = tk.Frame(self.manage_tab)
         self.top_frame.pack(fill="x", padx=10, pady=5, expand=True)
-        sep = ttk.Separator(self.root, orient=HORIZONTAL)
+        sep = ttk.Separator(self.manage_tab, orient=HORIZONTAL)
         sep.pack(padx=10, fill=tk.X)
         
-        self.middle_frame = tk.Frame(self.root)
+        self.middle_frame = tk.Frame(self.manage_tab)
         self.middle_frame.pack(fill="both", padx=10, pady=5, anchor="s", expand=True)
         self.middle_frame.columnconfigure(0, weight=1)
         self.middle_frame.columnconfigure(1, weight=1)
         self.middle_frame.columnconfigure(2, weight=1)
         self.middle_frame.columnconfigure(3, weight=1)
         self.middle_frame.rowconfigure(1, weight=1)
-        sep = ttk.Separator(self.root, orient=HORIZONTAL)
+        sep = ttk.Separator(self.manage_tab, orient=HORIZONTAL)
         sep.pack(padx=10, fill=tk.X)
         
-        self.bottom_frame = tk.Frame(self.root)
+        self.bottom_frame = tk.Frame(self.manage_tab)
         self.bottom_frame.pack(fill="both", expand=True)
         
-        self.stats_frame = tk.LabelFrame(self.root, text="統計資料", labelanchor="n", padx=10, pady=10)
+        self.stats_frame = tk.LabelFrame(self.manage_tab, text="統計資料", labelanchor="n", padx=10, pady=10)
         self.stats_frame.pack(side='bottom', fill='both', expand='True')
         
         # name entry
@@ -157,7 +173,21 @@ class ScoreManager:
         # stats data
         self.stats_label = tk.Label(self.stats_frame, text="分數統計資料")
         self.stats_label.pack()
-
+        
+        # ---------------------------------------------
+        # 圖表分析頁面
+        # ---------------------------------------------
+        self.chart_options = ["長條圖", "圓餅圖", "箱型圖"]
+        self.chart_var = tk.StringVar(value=self.chart_options[0])
+        
+        self.chart_listbox = tk.Listbox(self.chart_tab, listvariable=tk.StringVar(value=self.chart_options), height=4)
+        self.chart_listbox.pack(side="left", fill="y")
+        self.chart_listbox.bind("<<ListboxSelect>>", self.update_chart)
+        
+        self.chart_canva_frame = tk.Frame(self.chart_tab)
+        self.chart_canva_frame.pack(side="left", fill="both", expand=True)
+        self.chart_canva = None
+        
     # --------------------------------------
     # Function
     # --------------------------------------
@@ -348,13 +378,13 @@ class ScoreManager:
         bottom_frame_bg =  "#F2F2F2" if self.dark_mode else "#404040"
 
         widgets = [
-            self.root, self.top_frame, self.middle_frame, self.bottom_frame,
+            self.root, self.manage_tab, self.chart_tab, self.top_frame, self.middle_frame, self.bottom_frame,
             self.name_entry, self.score_entry, self.score_lb
         ]
         
         for w in widgets:
             w.configure(bg=bg)
-        for child in self.top_frame.winfo_children() + self.middle_frame.winfo_children():
+        for child in self.top_frame.winfo_children() + self.middle_frame.winfo_children() + self.chart_tab.winfo_children():
             try:
                 if type(child) == tk.Radiobutton or type(child) == tk.Checkbutton:
                     child.configure(bg=bg, fg=fg, selectcolor=bg)
@@ -397,6 +427,86 @@ class ScoreManager:
             messagebox.showerror("錯誤", "查無有效學生可清除備註")
             return
         messagebox.showinfo("成功", f"已移除{name}學生的備註資料!")
+
+
+    def update_chart(self, event):
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        import matplotlib.pyplot as plt
+        
+        selection = self.chart_listbox.curselection()
+        if not selection:
+            return
+        if self.chart_canva:
+            self.chart_canva.get_tk_widget().destroy()
+        
+        scores = [rec.score for name, records in self.students.items() for rec in records if not rec.deleted]
+        fig = plt.Figure(figsize=(5, 3), dpi=100)
+        ax = fig.add_subplot(1, 1, 1)
+        chart_type = self.chart_listbox.get(selection[0])
+        
+        if chart_type == "長條圖":
+            bins = list(range(0, 101, 10))
+            labels = [str(i) for i in bins]
+            score_count = [0]*len(bins)
+            
+            for s in scores:
+                score_count[s//10] += 1
+            if sum(score_count) == 0:
+                return
+            
+            ax.bar(labels, score_count, color="skyblue")
+            ax.set_title("Score bar chart")
+            ax.set_xlabel("score")
+            ax.set_ylabel("number of people")
+        elif chart_type == "圓餅圖":
+            score_ranges = [(0, 59), (60, 79), (80, 89), (90, 100)]
+            labels = [f"{start}~{end}" for start, end in score_ranges]
+            score_count = [0] * len(score_ranges)
+            colors = ["#e57373", "#ffd54f", "#64b5f6", "#81c784"]
+            
+            for s in scores:
+                for i, (start, end) in enumerate(score_ranges):
+                    if start <= s <= end:
+                        score_count[i] += 1
+                        break
+            # 過濾0人的區段:
+            filtered_score_count = []
+            filtered_labels = []
+            filtered_colors = []
+            for count, label, color in zip(score_count, labels, colors):
+                if count > 0:
+                    filtered_score_count.append(count)
+                    filtered_labels.append(label)
+                    filtered_colors.append(color)
+            if not filtered_score_count:
+                return
+            
+            def my_pct_format(pct):
+                total = sum(filtered_score_count)
+                count = int(round(pct*total/ 100.0))
+                return f"{pct:.1f}%({count})"
+            
+            ax.pie(
+                filtered_score_count,
+                labels=filtered_labels,
+                autopct=my_pct_format,
+                startangle=90,
+                colors=filtered_colors
+            )
+            ax.set_title("Score pie chart")
+        elif chart_type == "箱型圖":
+            if len(scores) < 2:
+                ax.text(0.5, 0.5, "not enough data to show(amount>=2)", ha="center", va="center")
+            else:
+                ax.boxplot(scores, vert=True, patch_artist=True,
+                            boxprops=dict(facecolor='lightblue'),
+                            medianprops=dict(color='red', linewidth=2))
+                ax.set_title("Boxplot score chart")
+                ax.set_ylabel("score")
+                ax.set_xticks([])
+        self.chart_canva = FigureCanvasTkAgg(fig, master=self.chart_canva_frame)
+        self.chart_canva.draw()
+        self.chart_canva.get_tk_widget().pack(fill="both", expand=True)
 
     
 if __name__ == '__main__':
