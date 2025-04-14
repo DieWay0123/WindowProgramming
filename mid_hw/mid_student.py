@@ -215,12 +215,24 @@ class ScoreManager:
         
         if records and len(records) >=2:
             scores = [rec.score for rec in records]
+            scores.sort()
+            n = len(scores)
+            mid = n // 2
+            if n%2 == 0:
+                lower_half = scores[:mid]
+                upper_half = scores[mid:]
+            else:
+                lower_half = scores[:mid]
+                upper_half = scores[mid+1:]
+            q1 = statistics.median(lower_half)
+            q2 = statistics.median(scores)
+            q3 = statistics.median(upper_half)
             stats = f"人數: {len(scores)}\t \
             及格人數: {sum(1 for s in scores if s >= 60)}\t \
             平均: {statistics.mean(scores):.2f}\n \
-            Q3(25%): {statistics.quantiles(scores, n=4)[2]:.2f}\t \
-            Q2(50%): {statistics.median(scores):.2f}\t \
-            Q1(75%): {statistics.quantiles(scores, n=4)[0]:.2f}"
+            Q125%): {q1:.2f}\t \
+            Q2(50%): {q2:.2f}\t \
+            Q3(75%): {q3:.2f}"
         else:
             stats = "目前無可統計資料(僅一筆資料/無資料)"
         self.stats_label.config(text=stats)
@@ -228,7 +240,7 @@ class ScoreManager:
     def add_student(self):
         name = self.name_entry.get().strip()
         score_str = self.score_entry.get().strip()
-        note = self.note_entry.get("1.0", tk.END).rstrip()
+        note = self.note_entry.get("1.0", tk.END).rstrip().replace('\n', '').replace('\r', '')
                 
         try:
             score = int(score_str)
@@ -258,7 +270,7 @@ class ScoreManager:
     def search_student(self):
         name = self.name_entry.get().strip()
         if name in self.students and not self.students[name][-1].deleted:
-            messagebox.showinfo("查詢結果", f"{name} - {self.students[name][-1].score}分")
+            messagebox.showinfo("查詢結果", f"{name} - {self.students[name][-1].score}分({self.students[name][-1].note})")
         else:
             messagebox.showerror("錯誤", "查無此人")
         return
@@ -279,8 +291,9 @@ class ScoreManager:
     def update_student(self):
         name = self.name_entry.get().strip()
         score_str = self.score_entry.get().strip()
-        note = self.note_entry.get("1.0", tk.END).rstrip()
+        note = self.note_entry.get("1.0", tk.END).rstrip().replace('\n', '').replace('\r', '')
         if name in self.students and not self.students[name][-1].deleted:
+            # 判斷分數欄是否有輸入並判斷是否符合規則
             try:
                 if (len(score_str) == 0 and not note):
                     raise ValueError
@@ -292,6 +305,7 @@ class ScoreManager:
                 messagebox.showwarning("輸入錯誤", "請輸入有效的整數數字成績(0~100)或備註內容")
                 return
             
+            # 檢查是否有分數或備註更新，做相對應更新操作
             if score_str.isdigit():
                 score = int(score_str)
                 self.students[name][-1].score = score
