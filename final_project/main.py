@@ -10,108 +10,107 @@ from type_beat_trainer import TypeBeatTrainerWindow
 class MainMenu(tk.Tk):
     def __init__(self):
         super().__init__()
+        # 調整視窗開啟位置
         self.title("TypeRacer 練習程式")
-        self.geometry("700x500")
-        self.configure(bg="#f0f4f8")  # 背景顏色
-        
+        self.aspect_ratio = "4:3"
+        self.minsize(width=600, height=450)
+        self.resizable(True, True)
+
         self.main_menu_frame = None
         self.game_window = None
+        self.create_menu_bar()
         self.show_main_menu()
 
+    def create_menu_bar(self):
+        menubar = tk.Menu(self)
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_command(label="4:3", command=lambda: self.set_ratio("4:3"))
+        view_menu.add_command(label="16:9", command=lambda: self.set_ratio("16:9"))
+        menubar.add_cascade(label= "View", menu=view_menu)
+        self.config(menu=menubar)
+
+    def set_ratio(self, ratio):
+        self.aspect_ratio = ratio
+        self.set_resolution()
+
+    def set_resolution(self):            
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        if self.aspect_ratio == "4:3":
+            width = 960
+            height = 720
+        else:
+            width = 1280
+            height = 720
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        self.geometry(f"{width}x{height}+{x}+{y}")
+
     def show_main_menu(self):
-        self.title("TypeRacer 練習程式")
+        self.title("TypeRacer 英打練習")
+        self.set_resolution()
+        self.resizable(True, True)
+
         # 先將所有視窗關閉，確保只會有後續創建的Menu畫面
         if self.game_window:
             self.game_window.destroy()
         if self.main_menu_frame:
             self.main_menu_frame.destroy()
 
-        self.geometry("700x500")
-        self.main_menu_frame = tk.Frame(self, bg="#f0f4f8")
+        self.main_menu_frame = tk.Frame(self, bg="#1a1a1a")
         self.main_menu_frame.pack(expand=True, fill="both")
         
         self.main_menu_frame.columnconfigure(0, weight=1)
-        self.main_menu_frame.rowconfigure([0, 1, 2, 3], weight=1)
-
+        self.main_menu_frame.rowconfigure([0, 1, 2, 3, 4, 5], weight=1)
+        
         title = tk.Label(
             self.main_menu_frame, 
-            text="Welcome to TypeRacer!", 
-            font=("Helvetica", 32, "bold"),
-            bg="#ecf0f1",
-            fg="#2c3e50"
+            text="🕹️Welcome to TypeRacer!", 
+            font=("Courier New", 42, "bold"),
+            bg="#1a1a1a",
+            fg="#ffe600"
         )
         title.grid(row=0, column=0, pady=40, sticky="ns")
 
-        solo_race_typing_start_button = tk.Button(
-            self.main_menu_frame, 
-            text="Start Solo Typing", 
-            font=("Arial", 16), 
-            bg="#27ae60",
-            fg="white",
-            activebackground="#2ecc71",
-            activeforeground="white",
-            width=25,
-            height=2,
-            command=self.start_solo_race_typing_game
-        )
-        solo_race_typing_start_button.grid(row=1, column=0, pady=5, sticky="ns")
+        def create_menu_button(text, bg, hover, command, row):
+            btn = tk.Button(
+                self.main_menu_frame,
+                text=text,
+                font=("Courier New", 16, "bold"),
+                bg=bg,
+                fg="white",
+                activebackground=hover,
+                activeforeground="white",
+                width=25,
+                height=2,
+                bd=4,
+                relief="ridge",
+                command=command
+            )
+            btn.grid(row=row, column=0, pady=10, padx=150, sticky="nsew")
+            
+        create_menu_button("Solo Typing", "#2ecc71", "#58d68d", self.start_solo_race_typing_game, 1)
+        create_menu_button("Host Game (2P)", "#3498db", "#5dade2", self.start_host_game, 2)
+        create_menu_button("Join Game (2P)", "#8e44ad", "#a569bd", self.start_join_game, 3)
+        create_menu_button("TypeBeat Rhythm", "#f39c12", "#f7c65f", self.start_type_beat, 4)
+        create_menu_button("Exit", "#e74c3c", "#ec7063", self.quit, 5)   
 
-        # 開主機對戰模式按鈕
-        host_game_button = tk.Button(
-            self.main_menu_frame,
-            text="Host Game (2P)",
-            font=("Arial", 16),
-            bg="#2980b9",
-            fg="white",
-            activebackground="#3498db",
-            activeforeground="white",
-            width=25,
-            height=2,
-            command=self.start_host_game
-        ).grid(row=2, column=0, pady=5, sticky="ns")
-
-        # 加入對戰模式按鈕
-        join_game_button = tk.Button(
-            self.main_menu_frame,
-            text="Join Game (2P)",
-            font=("Arial", 16),
-            bg="#8e44ad",
-            fg="white",
-            activebackground="#9b59b6",
-            activeforeground="white",
-            width=25,
-            height=2,
-            command=self.start_join_game
-        ).grid(row=3, column=0, pady=5, sticky="ns")
-
-        typebeat_button = tk.Button(
-            self.main_menu_frame,
-            text="TypeBeat Rhythm",
-            font=("Arial", 16),
-            bg="#f39c12",
-            fg="white",
-            activebackground="#f1c40f",
-            activeforeground="white",
-            width=25,
-            height=2,
-            command=self.start_type_beat
-        )
-        typebeat_button.grid(row=4, column=0, pady=5, sticky="ns")
-
-        exit_button = tk.Button(
-            self.main_menu_frame, 
-            text="Exit", 
-            font=("Arial", 16), 
-            bg="#c0392b",
-            fg="white",
-            activebackground="#e74c3c",
-            activeforeground="white",
-            width=25,
-            height=2,
-            command=self.quit
-        )
-        exit_button.grid(row=5, column=0, pady=5, sticky="ns")
-        
+    def modify_window_size(self, mode):
+        if self.aspect_ratio == "4:3":
+            if mode == "solo":
+                size = (480, 360)
+            elif mode == "multi_game":
+                size = (960, 720)
+            else:
+                size = (1400, 400)
+            return size
+        else:
+            if mode == "solo":
+                size = (640, 360)
+            elif mode == "multi_game":
+                size = (1280, 720)
+            else:
+                size = (1400, 400)
 
     def start_solo_race_typing_game(self):
         self.main_menu_frame.destroy()

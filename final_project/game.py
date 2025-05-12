@@ -7,8 +7,37 @@ from tkinter.font import BOLD
 from typing import List, Dict
 
 class GameWindow:
-    def __init__(self, root):
+    def set_resolution(self):            
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        if self.aspect_ratio == "4:3":
+            width = 480
+            height = 360
+        else:
+            width = 640
+            height = 360
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 4) - (height // 2)
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
+    
+    # 遊戲時版本的menu
+    def create_menu_bar(self):
+        menubar = tk.Menu(self.root)
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_command(label="4:3", command=lambda: self.set_ratio("4:3"))
+        view_menu.add_command(label="16:9", command=lambda: self.set_ratio("16:9"))
+        menubar.add_cascade(label= "View", menu=view_menu)
+        self.root.config(menu=menubar)
+
+    def set_ratio(self, ratio):
+        self.aspect_ratio = ratio
+        self.set_resolution()
+
+    def __init__(self, root: tk.Tk):
         self.root = root
+        self.root.resizable(False, False)
+        self.original_menu = self.root["menu"]
+        self.create_menu_bar()
 
         self.articles = self.load_articles()
         if not self.articles:
@@ -18,6 +47,9 @@ class GameWindow:
         self.start_time = None
         self.is_typing = None
         
+        # 調整視窗開啟位置
+        self.aspect_ratio = getattr(root, 'aspect_ratio', '4:3')
+        self.set_resolution()
         # stats相關紀錄參數
         self.has_made_mistake = False # 用於避免同個單字輸入錯誤被重複計算
         self.total_wrong_words = 0
@@ -195,7 +227,7 @@ class GameWindow:
             if y+h <= self.article_display.winfo_height():
                 return
 
-        # 步驟 1：從 index "1.0" 開始逐字找第一行
+        # 從index "1.0" 開始逐字找第一行
         line_end_idx = None
         prev_y = None
         for offset in range(len(self.target_article)):
@@ -212,7 +244,7 @@ class GameWindow:
         else:
             line_end_idx = f"1.0 + {len(self.target_article) - 1} chars"
 
-        # 步驟 2：取得該位置的字元並向前尋找該字屬於哪個單字
+        # 取得該位置的字元並向前尋找該字屬於哪個單字
         char_pos = text.index(line_end_idx)
         linear_index = int(char_pos.split('.')[1])  # 因為整段是 1 行
         word_end = 0
@@ -260,27 +292,30 @@ class GameWindow:
         if not self.is_typing:
             self.start_time = time.time()
             self.is_typing = True
+            # 暫時關閉menu不能更改尺寸
+            emptyMenu = tk.Menu()
+            self.root.config(menu=emptyMenu)
     
     def on_space_press(self, event):
         typed_word = self.typing_entry.get().strip()
-        target_word = self.target_words[self.current_word_idx] if self.current_word_idx < len(self.target_words) else ""          
-
+        if self.current_word_idx < len(self.target_words):
         # 若目前打的單字完全正確可以進入下一個單字
-        if typed_word == target_word:
-            self.typed_words.append(typed_word)
-            self.current_word_idx += 1
-            self.typing_entry.delete(0, tk.END)
-            self.has_made_mistake = False
-            self.render_article()
-            self.auto_scroll_after_first_line_done()
-            self.update_stats()
-            self.update_progress_bar()
+            if typed_word == self.target_words[self.current_word_idx]:
+                self.typed_words.append(typed_word)
+                self.current_word_idx += 1
+                self.typing_entry.delete(0, tk.END)
+                self.has_made_mistake = False
+                self.render_article()
+                self.auto_scroll_after_first_line_done()
+                self.update_stats()
+                self.update_progress_bar()
             
-            # 當全部文章都打完時
-            if self.current_word_idx >= len(self.target_words):
-                self.typing_entry.config(state="disabled")
-                self.update_stats(final=True)
-                self.car_blink_at_finish()
+                # 當全部文章都打完時
+                if self.current_word_idx >= len(self.target_words):
+                    self.typing_entry.config(state="disabled")
+                    self.update_stats(final=True)
+                    self.car_blink_at_finish(self.car)
+                    self.create_menu_bar()
         return "break"       
     
     # 每當打正確一個單字時計算數據
@@ -364,7 +399,7 @@ class GameWindow:
         animate(0)
         
     # 小車抵達終點時閃爍
-    def car_blink_at_finish(self):
+    def car_blink_at_finish(self, car):
         if not hasattr(self, 'car'):
             return
 
@@ -372,10 +407,10 @@ class GameWindow:
 
         def blink(step):
             if step >= blink_count:
-                self.track_canvas.itemconfig(self.car, state="normal")
+                self.track_canvas.itemconfig(car, state="normal")
                 return
             state = "hidden" if step % 2 == 0 else "normal"
-            self.track_canvas.itemconfig(self.car, state=state)
+            self.track_canvas.itemconfig(car, state=state)
             self.track_canvas.after(200, lambda: blink(step + 1))
         blink(0)
         
@@ -398,10 +433,12 @@ class GameWindow:
         self.stats_label.config(text="")
         self.render_article()
         self.update_stats()
+        self.create_menu_bar()
         
     def back_to_menu(self):
         if messagebox.askyesno("回到標題", "是否確定要回到標題呢?"):
             self.destroy()
+            self.root.config(menu=self.original_menu)
             if hasattr(self.root, "show_main_menu"):
                 self.root.show_main_menu()
     

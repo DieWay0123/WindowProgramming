@@ -16,10 +16,11 @@ class HostGameWindow:
         self.root.title("TypeRacer - Host")
         
         # main Frame
-        self.frame = tk.Frame(self.root, bg="#ecf0f1")
+        self.frame = tk.Frame(self.root, bg="#1a1a1a")
         self.frame.pack(expand=True, fill="both")
-                
+
         # 連線相關參數
+        self.server_socket = None
         self.host_port = host_port
         self.conn = None
         self.addr = None
@@ -44,24 +45,25 @@ class HostGameWindow:
         self.build_init_game_ui()
     
     def build_init_game_ui(self):
-        tk.Label(self.frame, text="Enter your Name!", font=("Arial", 20), bg="#ecf0f1").pack(pady=10)
-        self.name_entry = tk.Entry(self.frame, font=("Arial", 14))
+        tk.Label(self.frame, text="Enter your Name!", font=("Courier New", 24, "bold"), bg="#1a1a1a", fg="#ffe600").pack(pady=20)
+        self.name_entry = tk.Entry(self.frame, font=("Courier New", 16, "bold"), bg="#ecf0f1", fg="#2c3e50", insertbackground="black", width=25, justify="center")
         self.name_entry.pack(pady=10)
-        tk.Button(self.frame, text="Start Hosting", font=("Arial", 14), bg="#27ae60", fg="white",
-                command=self.start_hosting).pack(pady=20)
-        self.status = tk.Label(self.frame, text="", font=("Arial", 12), bg="#ecf0f1", fg="gray")
-        self.status.pack()
+
+        self.start_btn = tk.Button(self.frame, text="Start Hosting", 
+                font=("Arial", 14), bg="#2ecc71", fg="white",
+                relief="ridge", bd=4, padx=10, pady=5,
+                command=self.start_hosting)
+        self.start_btn.pack(pady=20)
+        self.status = tk.Label(self.frame, text="waiting to start...", font=("Courier New", 12), bg="#2c3e50", fg="gray", relief="groove", bd=3, padx=10, pady=5, width=30)
+        self.status.pack(pady=5)
         
         tk.Button(
             self.frame,
             text="回到選單",
-            font=("Arial", 14),
-            bg="#95a5a6",
-            fg="#ffffff",
-            padx=10,
-            pady=5,
+            font=("Arial", 14), bg="#7f8c8d", fg="white",
+            relief="ridge", bd=4, padx=10, pady=5,
             command=self.back_to_menu
-        ).pack()
+        ).pack(pady=10)
         
     def load_articles(self):
         articles = []
@@ -80,19 +82,20 @@ class HostGameWindow:
         return articles
     
     def start_hosting(self):
+        self.start_btn.config(state="disabled")
         self.player_name = self.name_entry.get().strip() or "Host"
-        for widget in self.frame.winfo_children():
-            widget.destroy()
-        self.status = tk.Label(self.frame, text="Waiting for opponent to join...", font=("Arial", 14), bg="#ecf0f1")
-        self.status.pack(pady=20)
-        
-        # 設定 Server socket
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # 使用TCP連線
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server_socket.bind(("0.0.0.0", self.host_port))
-        self.server_socket.listen(1) # TCP 3way handshake
-        threading.Thread(target=self.accept_connection, daemon=True).start()
-    
+        try:
+            # 設定 Server socket
+            self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # 使用TCP連線
+            self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.server_socket.bind(("0.0.0.0", self.host_port))
+            self.server_socket.listen(1) # TCP 3way handshake
+            self.update_status("Waiting for connection...")
+            threading.Thread(target=self.accept_connection, daemon=True).start()
+        except Exception as e:
+            self.start_btn.config(state="normal")
+            self.status_label.config(text=f"Connection failed: {e}")
+
     def accept_connection(self):
         self.conn, self.addr = self.server_socket.accept()
         self.update_status(f"Connected to {self.addr[0]}")
@@ -157,6 +160,8 @@ class HostGameWindow:
     def back_to_menu(self):
         if messagebox.askyesno("回到標題", "是否確定要回到標題呢?"):
             self.destroy()
+            if self.server_socket:
+                self.server_socket.close()
             if hasattr(self.root, "show_main_menu"):
                 self.root.show_main_menu()
     

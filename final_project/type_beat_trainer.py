@@ -8,6 +8,10 @@ class TypeBeatTrainerWindow():
         self.root.title("TypeBeat Rhythm!")
         self.root.geometry("1400x400")
         self.root.resizable(False, False)
+        self.original_menu = self.root["menu"]
+        emptyMenu = tk.Menu(self.root)
+        self.root.config(menu=emptyMenu)
+
         self.frame = tk.Frame(self.root)
         self.frame.pack(expand=True, fill="both")
         
@@ -32,7 +36,7 @@ class TypeBeatTrainerWindow():
         self.control_frame.pack(side="left", padx=10, pady=10, fill="y")
         
         tk.Label(self.control_frame, text="Generating Speed:", font=("Arial", 12), bg="#dbe9f4", fg="#333").pack(pady=(10, 0))
-        self.bpm_scale = tk.Scale(self.control_frame, from_=1, to=100, orient="horizontal", command=self.set_bpm)
+        self.bpm_scale = tk.Scale(self.control_frame, from_=60, to=100, orient="horizontal", command=self.set_bpm)
         self.bpm_scale.set(self.bpm)
         self.bpm_scale.pack()
         
@@ -155,7 +159,7 @@ class TypeBeatTrainerWindow():
         self.beats.append(((text_box, text_id), symbol))
         
         # 計算每隔一段時間(bpm)就生成新的文字
-        interval = int(60000 / self.bpm*2.4)
+        interval = int(60000 / (self.bpm*2))
         self.root.after(int(interval*3), self.spawn_beat)
         
     def move_beats(self):
@@ -276,6 +280,7 @@ class TypeBeatTrainerWindow():
         if messagebox.askyesno("回到標題", "是否確定要回到標題呢?"):
             self.frame.destroy()
             if hasattr(self.root, "show_main_menu"):
+                self.root.config(menu=self.original_menu)
                 self.root.show_main_menu()
                 
     def destroy(self):

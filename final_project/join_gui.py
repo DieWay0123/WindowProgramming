@@ -11,9 +11,9 @@ class JoinGameWindow:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("TypeRacer - Join")
-        
+
         # main Frame
-        self.frame = tk.Frame(self.root, bg="#ecf0f1")
+        self.frame = tk.Frame(self.root, bg="#1a1a1a")
         self.frame.pack(expand=True, fill="both")
 
         # 連線相關參數
@@ -26,27 +26,29 @@ class JoinGameWindow:
         self.build_connection_ui()
 
     def build_connection_ui(self):
-        tk.Label(self.frame, text="Enter Host IP:", font=("Arial", 14), bg="#ecf0f1").pack(pady=10)
-        self.ip_entry = tk.Entry(self.frame, font=("Arial", 14))
+        tk.Label(self.frame, text="Enter Host IP:", font=("Courier New", 24, "bold"), bg="#1a1a1a", fg="#ffe600").pack(pady=20)
+        self.ip_entry = tk.Entry(self.frame, font=("Courier New", 14), bg="#ecf0f1", fg="#2c3e50", insertbackground="black", width=25, justify="center")
         self.ip_entry.insert(0, "127.0.0.1")
         self.ip_entry.pack(pady=5)
 
-        tk.Label(self.frame, text="Enter Your Name:", font=("Arial", 14), bg="#ecf0f1").pack(pady=10)
-        self.name_entry = tk.Entry(self.frame, font=("Arial", 14))
+        tk.Label(self.frame, text="Enter Your Name:", font=("Courier New", 24, "bold"), bg="#1a1a1a", fg="white").pack(pady=10)
+        self.name_entry = tk.Entry(self.frame, font=("Courier New", 14), bg="#ecf0f1", fg="#2c3e50", insertbackground="black", width=25, justify="center")
         self.name_entry.insert(0, "Guest")
         self.name_entry.pack(pady=5)
 
         self.connect_button = tk.Button(
             self.frame, 
-            text="Connect", 
-            font=("Arial", 14), 
-            bg="#3498db", fg="white",
+            text="Connect to Host", 
+            font=("Courier New", 16, "bold"), 
+            bg="#27ae60", fg="white",
+            activebackground="#2ecc71",
+            relief="ridge", bd=4, padx=10, pady=5,
             command=self.connect_to_host
         )
         self.connect_button.pack(pady=20)
 
-        self.status_label = tk.Label(self.frame, text="", font=("Arial", 12), bg="#ecf0f1", fg="gray")
-        self.status_label.pack()
+        self.status_label = tk.Label(self.frame, text="Awaiting connection...", font=("Courier New", 12), bg="#2c3e50", fg="gray", relief="groove", bd=3, padx=10, pady=5, width=30)
+        self.status_label.pack(pady=5)
 
         tk.Button(
             self.frame,
@@ -57,7 +59,7 @@ class JoinGameWindow:
             padx=10,
             pady=5,
             command=self.back_to_menu
-        ).pack()
+        ).pack(pady=10)
 
     def connect_to_host(self):
         ip = self.ip_entry.get().strip()

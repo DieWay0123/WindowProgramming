@@ -74,18 +74,6 @@ class MultiplayerGameWindow(GameWindow):
     def resize_progress_bar(self, event): # 更新全部車子位置
         self.finish_line_x = self.track_canvas.winfo_width() - 60
         
-        '''
-        # 建立賽道地板
-        self.track_canvas.delete("floor")
-        self.track_canvas.create_line(
-            0, 80,
-            self.finish_line_x, 80,
-            fill="black",
-            width=10,
-            dash=(5, 5),
-            tags="floor"
-        )
-        '''
         # 隨視窗大小重新設定終點位置
         self.track_canvas.delete("finish_line")
         self.track_canvas.create_line(
@@ -153,9 +141,14 @@ class MultiplayerGameWindow(GameWindow):
                 self.typing_entry.delete(0, tk.END)
                 self.has_made_mistake = False
                 self.render_article()
+                self.auto_scroll_after_first_line_done()
                 self.update_stats()
-                self.update_local_car()
-                self.send_progress()
+                self.update_local_car() # 與solo版不同之處
+                self.send_progress() # 與solo版不同之處
+                print(self.target_words)
+                if self.current_word_idx >= len(self.target_words):
+                    self.typing_entry.config(state="disabled")
+                    self.update_stats(final=True)
         return "break"
 
     def send_progress(self):
@@ -253,16 +246,9 @@ class MultiplayerGameWindow(GameWindow):
     def check_game_over(self):
         if not self.game_over and len(self.finish_order) == len(self.players_progress):
             self.game_over = True
+            self.create_menu_bar()
             self.show_results()
 
-    '''   
-    def add_remote_car(self, player_id, name):
-        if player_id == self.player_id:
-            return
-        y = 40 + 40 * len(self.players_car_ids)
-        car_id = self.track_canvas.create_text(10, y, text=f"🚙 {name}", anchor="w", font=("Arial", 14))
-        self.players_car_ids[player_id] = car_id
-    '''
     def update_local_car(self):
         self.players_progress[self.player_id] = len(self.typed_words)
         self.update_remote_car(self.player_id)
