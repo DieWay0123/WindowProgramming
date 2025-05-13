@@ -164,7 +164,7 @@ class GameWindow:
         self.render_article()
         self.update_stats()
     
-    # current_input: 目前單字輸入的位置(目前進行中的單字優)
+    # current_input: 目前單字輸入的位置(目前進行中的單字)
     def render_article(self, current_iunput=""):
         # 重新渲染文本框前要先將舊資訊清除
         self.article_display.config(state="normal")
@@ -180,7 +180,6 @@ class GameWindow:
                     if j < len(self.typed_words[i]):
                         if self.typed_words[i][j] == char:
                             tag = "correct"
-                        #!FIX 考慮只保留correct，因為已完成單字應該必定為correct
                         else:
                             tag = "incorrect"
                     else:
@@ -217,14 +216,13 @@ class GameWindow:
     
     def auto_scroll_after_first_line_done(self):
         text = self.article_display
-        target = self.target_words
         typed = self.typed_words
         
         # 若不需要調整
         bbox = self.article_display.bbox("end-1c")
         if bbox:
             x, y, w, h = bbox
-            if y+h <= self.article_display.winfo_height():
+            if y+h <= self.article_display.winfo_height() - 20:
                 return
 
         # 從index "1.0" 開始逐字找第一行
@@ -243,7 +241,7 @@ class GameWindow:
                 break
         else:
             line_end_idx = f"1.0 + {len(self.target_article) - 1} chars"
-
+            
         # 取得該位置的字元並向前尋找該字屬於哪個單字
         char_pos = text.index(line_end_idx)
         linear_index = int(char_pos.split('.')[1])  # 因為整段是 1 行
@@ -293,8 +291,7 @@ class GameWindow:
             self.start_time = time.time()
             self.is_typing = True
             # 暫時關閉menu不能更改尺寸
-            emptyMenu = tk.Menu()
-            self.root.config(menu=emptyMenu)
+            self.root.config(menu="")
     
     def on_space_press(self, event):
         typed_word = self.typing_entry.get().strip()

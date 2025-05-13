@@ -13,6 +13,8 @@ from game import GameWindow
 
 class MultiplayerGameWindow(GameWindow):
     def __init__(self, root, player_name, connection: socket.socket, is_host=False):
+        self.root = root
+        
         self.player_name: str = player_name
         self.conn: socket.socket = connection
         self.conn.settimeout(1.0)
@@ -40,6 +42,7 @@ class MultiplayerGameWindow(GameWindow):
         if hasattr(self, "restart_button"):
             self.restart_button.destroy()
 
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         threading.Thread(target=self.listen_for_updates, daemon=True).start()
 
     def start_countdown(self, seconds=3):
@@ -109,7 +112,7 @@ class MultiplayerGameWindow(GameWindow):
             
         self.update_all_tracks()
         self.update_remote_car(player_id=player_id)
-    
+        
     # 隨視窗或玩家人數更新調整賽道地板    
     def update_all_tracks(self):
         self.track_canvas.delete("track_line")
@@ -194,7 +197,7 @@ class MultiplayerGameWindow(GameWindow):
         with self.lock:
             if self.is_destroyed:
                 return             
-            if msg["type"] == "progress": # host
+            if msg["type"] == "progress":
                 print("progress")
                 player_id = msg["player_id"]
                 name = msg["name"]
@@ -208,7 +211,7 @@ class MultiplayerGameWindow(GameWindow):
                         self.game_over = True
                         self.show_results()
                 
-            elif msg["type"] == "introduce": # host
+            elif msg["type"] == "introduce":
                 print("introduce")
                 name = msg["name"]
                 player_id = msg["id"]
@@ -217,7 +220,7 @@ class MultiplayerGameWindow(GameWindow):
                     self.ready_to_start = True
                     self.start_countdown()
                 
-            elif msg["type"] == "start": # join
+            elif msg["type"] == "start":
                 print("start")
                 name = msg["host_player_name"]
                 self.target_article: str = msg["text"]
@@ -241,11 +244,24 @@ class MultiplayerGameWindow(GameWindow):
                 if player_id not in self.finish_order:
                     self.finish_order.append(player_id)
                     self.left_players.add(player_id)
+                    self.mark_player_as_left(player_id)
                     self.check_game_over()
+
+    def mark_player_as_left(self, player_id):
+        # 標示名稱為灰色 + (Left)
+        if player_id in self.players_name_ids:
+            name = next(iter(self.left_players)).split("#")[0]
+            self.track_canvas.itemconfig(self.players_name_ids[player_id], fill="#999999")
+            self.track_canvas.itemconfig(self.players_name_ids[player_id], text=f"{name} ❌")
+
+        # 將小車變灰或縮小
+        if player_id in self.players_car_ids:
+            self.track_canvas.itemconfig(self.players_car_ids[player_id], text="💤")
 
     def check_game_over(self):
         if not self.game_over and len(self.finish_order) == len(self.players_progress):
             self.game_over = True
+            self.conn.close()
             self.create_menu_bar()
             self.show_results()
 
@@ -398,7 +414,6 @@ class MultiplayerGameWindow(GameWindow):
                     animate_winner(label)
             result_window.after(delay, show_label)
     
-        
     def back_to_menu(self):
         try:
             if messagebox.askyesno("回到標題", "是否確定要回到標題呢?"):
@@ -406,6 +421,7 @@ class MultiplayerGameWindow(GameWindow):
                     "type": "leave",
                     "id": self.player_id
                 })
+                self.root.config(menu=self.original_menu)
                 self.destroy()
                 if hasattr(self.root, "show_main_menu"):
                     self.root.show_main_menu()
@@ -413,6 +429,20 @@ class MultiplayerGameWindow(GameWindow):
         except:
             pass
 
+    def on_close(self):
+        if messagebox.askokcancel("Quit", "你目前正在遊戲中，是否要退出?"):
+            try:
+                self.send_json({
+                    "type": "leave", 
+                    "id": self.player_id
+                })
+                self.root.after(2000, self.conn.close)
+            except:
+                pass
+            self.is_destroyed = True
+            self.root.destroy()
+
     def destroy(self):
         self.is_destroyed = True
         self.frame.destroy()
+        

@@ -5,12 +5,12 @@ import random
 class TypeBeatTrainerWindow():
     def __init__(self, root: tk.Tk):
         self.root = root
+        self.original_menu = self.root["menu"]
+        self.root.config(menu="")
+        
         self.root.title("TypeBeat Rhythm!")
         self.root.geometry("1400x400")
         self.root.resizable(False, False)
-        self.original_menu = self.root["menu"]
-        emptyMenu = tk.Menu(self.root)
-        self.root.config(menu=emptyMenu)
 
         self.frame = tk.Frame(self.root)
         self.frame.pack(expand=True, fill="both")
@@ -77,8 +77,8 @@ class TypeBeatTrainerWindow():
         self.judge_line = w // 20
         
         # 畫出整條軌道區域（背景陰影）
-        track_top = h // 2 - 25
-        track_bottom = h // 2 + 25
+        track_top = h // 2 - 20
+        track_bottom = h // 2 + 20
         self.track = self.canvas.create_rectangle(
             self.judge_line - 10, track_top, 
             w , track_bottom, 
@@ -187,7 +187,9 @@ class TypeBeatTrainerWindow():
         
     # 命中或miss的回饋
     def show_feedback(self, text, color):
-        label = self.canvas.create_text(self.judge_line, self.canvas.winfo_height()//2 - 70, text=text, font=("Arial", 20, "bold"), fill=color, tags="feedback")
+        label = self.canvas.create_text(self.judge_line, self.canvas.winfo_height()//2 - 70, 
+                                        text=text, font=("Arial", 20, "bold"), 
+                                        fill=color, tags="feedback")
         self.canvas.after(500, lambda: self.canvas.delete(label))
         
     def flash_hitbox(self, color="#00ff88"):

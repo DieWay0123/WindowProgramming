@@ -1,5 +1,4 @@
 # main.py
-from mimetypes import MimeTypes
 import tkinter as tk
 from game import GameWindow
 from host_gui import HostGameWindow
@@ -47,6 +46,7 @@ class MainMenu(tk.Tk):
         self.geometry(f"{width}x{height}+{x}+{y}")
 
     def show_main_menu(self):
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.title("TypeRacer 英打練習")
         self.set_resolution()
         self.resizable(True, True)
@@ -95,23 +95,6 @@ class MainMenu(tk.Tk):
         create_menu_button("TypeBeat Rhythm", "#f39c12", "#f7c65f", self.start_type_beat, 4)
         create_menu_button("Exit", "#e74c3c", "#ec7063", self.quit, 5)   
 
-    def modify_window_size(self, mode):
-        if self.aspect_ratio == "4:3":
-            if mode == "solo":
-                size = (480, 360)
-            elif mode == "multi_game":
-                size = (960, 720)
-            else:
-                size = (1400, 400)
-            return size
-        else:
-            if mode == "solo":
-                size = (640, 360)
-            elif mode == "multi_game":
-                size = (1280, 720)
-            else:
-                size = (1400, 400)
-
     def start_solo_race_typing_game(self):
         self.main_menu_frame.destroy()
         self.game_window = GameWindow(self)
@@ -127,6 +110,9 @@ class MainMenu(tk.Tk):
     def start_type_beat(self):
         self.main_menu_frame.destroy()
         self.game_window = TypeBeatTrainerWindow(self)
+    
+    def on_close(self):
+        self.destroy()
 
 def main():
     app = MainMenu()
