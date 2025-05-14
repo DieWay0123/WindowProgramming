@@ -66,6 +66,7 @@ class JoinGameWindow:
         self.connect_button.config(state="disabled")
         self.player_name = self.name_entry.get().strip() or "Guest"
         self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.conn.settimeout(120)
         try:
             self.conn.connect((ip, 5000))
             self.player_id = f"{self.player_name}#{self.conn.getsockname()[1]}"

@@ -17,7 +17,7 @@ class MultiplayerGameWindow(GameWindow):
         
         self.player_name: str = player_name
         self.conn: socket.socket = connection
-        self.conn.settimeout(1.0)
+        self.conn.settimeout(120)
         self.player_id: str = f"{player_name}#{connection.getsockname()[1]}"
         self.is_host: bool = is_host
         
@@ -187,6 +187,8 @@ class MultiplayerGameWindow(GameWindow):
                     except:
                         continue
             except socket.timeout:
+                messagebox.showinfo("Timeout", "對手長時間無回應，視為斷線")
+                self.back_to_menu()
                 continue
             except (ConnectionResetError, json.JSONDecodeError):
                 if not self.is_destroyed and self.game_over:

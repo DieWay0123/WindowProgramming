@@ -57,13 +57,14 @@ class HostGameWindow:
         self.status = tk.Label(self.frame, text="waiting to start...", font=("Courier New", 12), bg="#2c3e50", fg="gray", relief="groove", bd=3, padx=10, pady=5, width=30)
         self.status.pack(pady=5)
         
-        tk.Button(
+        self.menu_btn = tk.Button(
             self.frame,
             text="回到選單",
             font=("Arial", 14), bg="#7f8c8d", fg="white",
             relief="ridge", bd=4, padx=10, pady=5,
             command=self.back_to_menu
-        ).pack(pady=10)
+        )
+        self.menu_btn.pack(pady=10)
         
     def load_articles(self):
         articles = []
@@ -83,10 +84,12 @@ class HostGameWindow:
     
     def start_hosting(self):
         self.start_btn.config(state="disabled")
+        self.menu_btn.config(state="disabled")
         self.player_name = self.name_entry.get().strip() or "Host"
         try:
             # 設定 Server socket
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # 使用TCP連線
+            self.server_socket.settimeout(10)
             # self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.server_socket.bind(("0.0.0.0", self.host_port))
             self.server_socket.listen(1) # TCP 3way handshake
@@ -94,18 +97,31 @@ class HostGameWindow:
             threading.Thread(target=self.accept_connection, daemon=True).start()
         except Exception as e:
             self.start_btn.config(state="normal")
-            self.status_label.config(text=f"Connection failed: {e}")
+            self.menu_btn.config(state="normal")
+            self.status.config(text=f"Connection failed: {e}")
 
     def accept_connection(self):
-        self.conn, self.addr = self.server_socket.accept()
-        self.update_status(f"Connected to {self.addr[0]}")
-        # 發送題目與host player name
-        self.send_json({
-            "type": "start",
-            "text": self.target_article,
-            "host_player_name": self.player_name,
-        })
-        self.root.after(100, self.launch_game_ui)
+        try:
+            self.conn, self.addr = self.server_socket.accept()
+            # self.conn.settimeout(120)
+            self.update_status(f"Connected to {self.addr[0]}")
+            # 發送題目與host player name
+            self.send_json({
+                "type": "start",
+                "text": self.target_article,
+                "host_player_name": self.player_name,
+            })
+            self.root.after(100, self.launch_game_ui)
+        except socket.timeout:
+            self.start_btn.config(state="normal")
+            self.menu_btn.config(state="normal")
+            self.server_socket.close()
+            self.status.config(text="Timeout! 無join端連線")
+        except Exception as e:
+            self.start_btn.config(state="normal")
+            self.menu_btn.config(state="normal")
+            self.server_socket.close()
+            self.status.config(text=f"Connection failed: {e}")
 
     def launch_game_ui(self):
         self.frame.destroy()
